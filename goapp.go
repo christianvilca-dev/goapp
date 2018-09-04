@@ -30,7 +30,7 @@ func loadPage(title string) (*Page, error) {
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/view/"):]
+	title := r.URL.Path[len("/view/"):] // captura lo que esta despues del "/view/"
 	p, err := loadPage(title)
 	if err != nil {
 		log.Fatal("Error al cargar pagina")
@@ -40,6 +40,40 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<h1>%s<h1/><div>%s</div>", p.Title, p.Body) //porque el p.body es byte y ya no hacemos una conversion
 }
 
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/edit/"):]
+	page, err := loadPage(title)
+	if err != nil {
+		page = &Page{Title: title} // Puntero a una estructura page
+	}
+	fmt.Fprintf(w, `
+		<html>
+		<head>
+			<title>%s</title>
+		</head>
+		<body>
+			<h1>%s</h1>
+			<form method="POST" action="/save/%s">
+				<textarea name="body">%s</textarea>
+				<button>Guardar</button
+			</form>
+		</body>
+		</html>	
+	`, page.Title, page.Title, page.Title, page.Body)
+}
+
+func welcomeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "<h1>Bienvenidos</h1>")
+}
+
+func saveHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/save/"):]
+	body := r.FormValue("body") // Capturamos los elementos del formulario
+	page := &Page{Title: title, Body: []byte(body)}
+	page.save()
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+}
+
 func main() {
 	/* page := &Page{Title: "primer", Body: []byte("Nuestra primer pagina")}
 	page.save() */
@@ -47,6 +81,10 @@ func main() {
 	fmt.Println(page.Title, string(page.Body)) */
 
 	// Se crea un servidor
+	http.HandleFunc("/", welcomeHandler)
 	http.HandleFunc("/view/", viewHandler)
+	http.HandleFunc("/edit/", editHandler)
+	http.HandleFunc("/save/", saveHandler)
+	fmt.Println("Ingrese a http://localhost:8080/view/")
 	http.ListenAndServe(":8080", nil)
 }
